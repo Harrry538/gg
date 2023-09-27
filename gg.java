@@ -1,80 +1,66 @@
 import com.microsoft.z3.*;
 
 import java.io.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-public class GraphColoringSolver {
+public class GraphColoring {
+
     public static void main(String[] args) {
-        // Initialize Z3 context
-        try (Context ctx = new Context()) {
+        try {
+            // Create a Z3 solver context
+            Context ctx = new Context();
+
             // Read input from input.txt
-            Scanner scanner = new Scanner(new File("input.txt"));
-            int N = scanner.nextInt(); // Number of vertices
-            int M = scanner.nextInt(); // Number of colors
+            BufferedReader reader = new BufferedReader(new FileReader("input.txt"));
+            String[] firstLine = reader.readLine().split(" ");
+            int N = Integer.parseInt(firstLine[0]);
+            int M = Integer.parseInt(firstLine[1]);
+
+            // Create variables for color assignments
+            Map<Integer, IntExpr> vertexToColor = new HashMap<>();
+            for (int i = 1; i <= N; i++) {
+                vertexToColor.put(i, ctx.mkIntConst("color_" + i));
+            }
 
             // Create Z3 solver
             Solver solver = ctx.mkSolver();
 
-            // Create variables pv,c for color(v) = c
-            BoolExpr[][] pv = new BoolExpr[N][M];
-            for (int v = 0; v < N; v++) {
-                for (int c = 0; c < M; c++) {
-                    pv[v][c] = ctx.mkBoolConst("p" + (v + 1) + "_" + (c + 1));
-                }
+            // Add constraints to the solver
+            for (int i = 1; i <= N; i++) {
+                IntExpr color = vertexToColor.get(i);
+                solver.add(ctx.mkAnd(ctx.mkGe(color, ctx.mkInt(1)), ctx.mkLe(color, ctx.mkInt(M)));
             }
 
-            // Describe the formula asserting every vertex is colored
-            for (int v = 0; v < N; v++) {
-                BoolExpr[] colorConstraints = new BoolExpr[M];
-                for (int c = 0; c < M; c++) {
-                    colorConstraints[c] = pv[v][c];
-                }
-                solver.add(ctx.mkOr(colorConstraints));
-            }
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] edge = line.split(" ");
+                int v1 = Integer.parseInt(edge[0]);
+                int v2 = Integer.parseInt(edge[1]);
 
-            // Describe the formula asserting every vertex has at most one color
-            for (int v = 0; v < N; v++) {
-                BoolExpr[] oneColorConstraints = new BoolExpr[M];
-                for (int c = 0; c < M; c++) {
-                    oneColorConstraints[c] = pv[v][c];
-                }
-                solver.add(ctx.mkAtMost(oneColorConstraints, 1));
+                // Add constraint: vertices connected by an edge cannot have the same color
+                solver.add(ctx.mkNot(ctx.mkEq(vertexToColor.get(v1), vertexToColor.get(v2)));
             }
+            reader.close();
 
-            // Read the edges and describe the formula asserting no two connected vertices have the same color
-            while (scanner.hasNext()) {
-                int vi = scanner.nextInt() - 1;
-                int wi = scanner.nextInt() - 1;
-                for (int c = 0; c < M; c++) {
-                    solver.add(ctx.mkImplies(pv[vi][c], ctx.mkNot(pv[wi][c]));
-                }
-            }
-
-            // Check if there is a satisfying solution
+            // Check for a solution
             if (solver.check() == Status.SATISFIABLE) {
-                // Get the model
                 Model model = solver.getModel();
+                BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"));
 
-                // Write the solution to output.txt
-                try (PrintWriter writer = new PrintWriter("output.txt")) {
-                    for (int v = 0; v < N; v++) {
-                        for (int c = 0; c < M; c++) {
-                            if (model.eval(pv[v][c], true).isTrue()) {
-                                writer.println((v + 1) + " " + (c + 1));
-                            }
-                        }
-                    }
+                for (int i = 1; i <= N; i++) {
+                    int color = model.evaluate(vertexToColor.get(i), false).getInt();
+                    writer.write(i + " " + color + "\n");
                 }
+
+                writer.close();
             } else {
                 // No solution
-                try (PrintWriter writer = new PrintWriter("output.txt")) {
-                    writer.println("No Solution");
-                }
+                BufferedWriter writer = new BufferedWriter(new FileWriter("output.txt"));
+                writer.write("No Solution");
+                writer.close();
             }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (Z3Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
