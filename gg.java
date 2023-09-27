@@ -41,6 +41,13 @@ public class GraphColoringSolver {
                 solver.add(ctx.mkAtMost(oneColorConstraints, 1));
             }
 
+            // Create an ordering constraint for color assignment
+            for (int v = 0; v < N; v++) {
+                for (int c = 0; c < M - 1; c++) {
+                    solver.add(ctx.mkImplies(pv[v][c], ctx.mkNot(pv[v][c + 1]));
+                }
+            }
+
             // Read the edges and describe the formula asserting no two connected vertices have the same color
             while (scanner.hasNext()) {
                 int vi = scanner.nextInt() - 1;
